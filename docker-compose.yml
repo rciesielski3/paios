@@ -22,7 +22,7 @@ services:
     image: n8nio/n8n:latest
     container_name: paios-n8n
     environment:
-      DB_TYPE: postgres
+      DB_TYPE: postgresdb
       DB_POSTGRESDB_HOST: postgres
       DB_POSTGRESDB_PORT: 5432
       DB_POSTGRESDB_USER: ${POSTGRES_USER}
@@ -35,6 +35,7 @@ services:
       N8N_PROTOCOL: http
     volumes:
       - ./data/n8n/config:/home/node/.n8n
+      - ../paios-vault:/vault
     ports:
       - "3333:3333"
     depends_on:

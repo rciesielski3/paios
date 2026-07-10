@@ -1,90 +1,254 @@
 {
   "name": "PAIOS Daily Brief",
-  "description": "Daily GitHub activity synthesis by Claude, delivered via Telegram",
   "nodes": [
     {
-      "parameters": {},
-      "id": "manual-trigger-node",
-      "name": "Manual Trigger",
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1,
-      "position": [250, 300]
-    },
-    {
       "parameters": {
-        "authentication": "oAuth2",
-        "owner": "={{ $processEnv.GITHUB_OWNER }}",
-        "operation": "getRepositories",
-        "resource": "repository"
+        "modelId": {
+          "__rl": true,
+          "value": "claude-sonnet-5",
+          "mode": "list",
+          "cachedResultName": "claude-sonnet-5"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are my technical Chief of Staff.\n\nAnalyze the following repositories together.\n\nReturn ONE markdown Daily Brief.\n\nFocus only on projects worth my attention.\n\nIgnore insignificant changes.\n\nFormat:\n\n# Daily Brief\n\n## Projects worth attention\n\n- ...\n\n## Recommendations\n\n- ...\n\nRepositories:\n\n{{ JSON.stringify($json.repositories, null, 2) }}"
+            }
+          ]
+        },
+        "options": {}
       },
-      "id": "github-get-repos",
-      "name": "GitHub: Get Your Repos",
-      "type": "n8n-nodes-base.github",
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
       "typeVersion": 1,
-      "position": [500, 300],
+      "position": [
+        624,
+        0
+      ],
+      "id": "6c5a1fe5-5976-464c-9047-b23bc271217d",
+      "name": "Generate Daily Brief (Claude)",
       "credentials": {
-        "githubApi": "={{ $secrets.github_credentials }}"
+        "anthropicApi": {
+          "id": "gzrR9lDtjE2kgU7o",
+          "name": "Anthropic account"
+        }
       }
     },
     {
       "parameters": {
-        "operation": "askAi",
-        "text": "Based on the GitHub activity below, create a Daily Brief following the exact format in system/prompts/daily-brief.md. User's interest profile: see system/interest-profile.md.\n\nGitHub Activity:\n{{ JSON.stringify($('GitHub: Get Your Repos').all()) }}\n\nFormat: exactly as specified. Total: <25 lines, <300 tokens.",
-        "model": "claude-3-5-sonnet-20241022",
-        "responseFormat": "text"
+        "chatId": "=8920148969",
+        "text": "={{$json.text}}",
+        "additionalFields": {}
       },
-      "id": "claude-synthesize",
-      "name": "Claude: Synthesize Brief",
-      "type": "n8n-nodes-base.openAi",
-      "typeVersion": 1,
-      "position": [750, 300],
-      "credentials": {
-        "openAiApi": "={{ $secrets.claude_credentials }}"
-      }
-    },
-    {
-      "parameters": {
-        "authentication": "botToken",
-        "botToken": "={{ $processEnv.TELEGRAM_BOT_TOKEN }}",
-        "chatId": "={{ $processEnv.TELEGRAM_CHAT_ID }}",
-        "text": "={{ $('Claude: Synthesize Brief').text }}",
-        "parseMode": "Markdown"
-      },
-      "id": "telegram-send",
-      "name": "Send Telegram: Brief",
+      "id": "b3041f5f-e63c-4338-8040-a993040e3138",
+      "name": "Send Telegram Brief",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1,
-      "position": [1000, 300]
+      "position": [
+        1200,
+        -112
+      ],
+      "webhookId": "0191d33d-4263-4e9f-9c25-60b7c74013bb",
+      "credentials": {
+        "telegramApi": {
+          "id": "dBaSxOlVYwt1q6k8",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const brief = $json.content[1].text;\n\nreturn [{\n  json: {\n    markdown: `# ${new Date().toISOString().slice(0,10)}\n\n${brief}\n\n---\n\nGenerated automatically by PAIOS\n`\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        96
+      ],
+      "id": "783ac7a6-27b5-441d-beb0-ba27e6910247",
+      "name": "Build Daily Note"
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "={{$json.markdown}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1200,
+        96
+      ],
+      "id": "21b544e7-2daa-4403-9a3a-32c95cffe942",
+      "name": "Convert to Markdown"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/vault/daily/{{$now.format(\"yyyy-MM-dd\")}}.md",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        1408,
+        96
+      ],
+      "id": "38027273-d59e-422f-8d1e-ebc1ae9dc88b",
+      "name": "Save Daily Note"
+    },
+    {
+      "parameters": {
+        "resource": "user",
+        "owner": {
+          "__rl": true,
+          "value": "=rciesielski3",
+          "mode": ""
+        },
+        "returnAll": true
+      },
+      "id": "3bb1fcb9-d95c-40ab-a0a6-c5e364a6b336",
+      "name": "Get GitHub Repositories",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [
+        192,
+        0
+      ],
+      "webhookId": "bb41da72-5f35-498e-b506-e940528c1a02",
+      "credentials": {
+        "githubApi": {
+          "id": "JcrlJS02mAQjQ6QD",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const repos = $input\n  .all()\n  .sort((a, b) =>\n    new Date(b.json.pushed_at).getTime() -\n    new Date(a.json.pushed_at).getTime()\n  )\n  .slice(0, 5)\n  .map(repo => ({\n    name: repo.json.name,\n    description: repo.json.description ?? \"\",\n    url: repo.json.html_url,\n    pushed_at: repo.json.pushed_at,\n    language: repo.json.language\n  }));\n\nreturn [\n  {\n    json: {\n      repositories: repos\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        0
+      ],
+      "id": "8f6e36d2-bee5-46e7-b450-c02576e05a27",
+      "name": "Select Top 5 Repositories"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n\n  json: {\n\n    text: $json.content[1].text\n\n      .replace(/\\*\\*/g, \"\")\n\n      .replace(/^#/gm, \"\")\n\n      .replace(/`/g, \"\")\n\n  }\n\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        -112
+      ],
+      "id": "2b0b5b48-b90a-4e13-849e-6b8d3d2129f3",
+      "name": "Prepare Telegram Message"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "5 8 * * 1-5"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "8d0a6fc5-7be5-4167-80ce-bf48d17dcfc1",
+      "name": "Schedule Trigger"
     }
   ],
+  "pinData": {},
   "connections": {
-    "Manual Trigger": {
+    "Generate Daily Brief (Claude)": {
       "main": [
         [
           {
-            "node": "GitHub: Get Your Repos",
+            "node": "Build Daily Note",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare Telegram Message",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "GitHub: Get Your Repos": {
+    "Build Daily Note": {
       "main": [
         [
           {
-            "node": "Claude: Synthesize Brief",
+            "node": "Convert to Markdown",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Claude: Synthesize Brief": {
+    "Convert to Markdown": {
       "main": [
         [
           {
-            "node": "Send Telegram: Brief",
+            "node": "Save Daily Note",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get GitHub Repositories": {
+      "main": [
+        [
+          {
+            "node": "Select Top 5 Repositories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Top 5 Repositories": {
+      "main": [
+        [
+          {
+            "node": "Generate Daily Brief (Claude)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Telegram Message": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get GitHub Repositories",
             "type": "main",
             "index": 0
           }
@@ -92,9 +256,18 @@
       ]
     }
   },
-  "active": false,
-  "settings": {},
-  "id": null,
-  "pinData": {},
-  "versionId": null
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "c94818f8-a833-4ab7-9b21-c9132979a0af",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1c4bef29fc77e115d4580ac30508175980a2cb93134c8724cb2cf76cb4f7b36f"
+  },
+  "nodeGroups": [],
+  "id": "bUikvI2ArYIO0A6O",
+  "tags": []
 }
