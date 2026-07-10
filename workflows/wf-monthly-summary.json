@@ -1,0 +1,133 @@
+{
+  "name": "PAIOS Monthly Summary",
+  "description": "Synthesize all daily briefs from previous month into monthly summary",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "cron-monthly",
+      "name": "Cron: 1st of Month 08:00",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "cronExpression": "0 8 1 * *"
+    },
+    {
+      "parameters": {
+        "operation": "getList",
+        "directoryPath": "/Users/rafalciesielski/Developer/paios-vault/daily",
+        "options": {}
+      },
+      "id": "list-daily-files",
+      "name": "List Daily Files (Previous Month)",
+      "type": "n8n-nodes-base.filesystemlistfiles",
+      "typeVersion": 1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "operation": "readTextFile",
+        "filePath": "={{ $('List Daily Files').map(f => `/Users/rafalciesielski/Developer/paios-vault/daily/${f.name}`).join(',') }}"
+      },
+      "id": "read-daily-briefs",
+      "name": "Read Daily Brief Files",
+      "type": "n8n-nodes-base.filesystemfileread",
+      "typeVersion": 1,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "operation": "askAi",
+        "text": "Based on the daily briefs below, create a monthly summary following system/prompts/monthly-summary.md format.\n\nDaily Briefs:\n{{ $('Read Daily Brief Files').fileContent }}\n\nGenerate themes, patterns, numbers, and next-month signals.",
+        "model": "claude-3-5-sonnet-20241022"
+      },
+      "id": "claude-synthesize-month",
+      "name": "Claude: Synthesize Monthly Summary",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "filePathInput": "=/Users/rafalciesielski/Developer/paios-vault/monthly/{{ now().subtract(1, 'month').format('YYYY-MM') }}-summary.md",
+        "fileContent": "# Month Summary — {{ now().subtract(1, 'month').format('MMMM YYYY') }}\n\n{{ $('Claude: Synthesize Monthly Summary').text }}\n\n---\n\n**Generated:** {{ now().format('YYYY-MM-DD HH:mm') }}"
+      },
+      "id": "write-monthly-file",
+      "name": "Write to Vault: Monthly Summary",
+      "type": "n8n-nodes-base.filesystemfilewrite",
+      "typeVersion": 1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "command": "cd /Users/rafalciesielski/Developer/paios-vault && git add monthly/{{ now().subtract(1, 'month').format('YYYY-MM') }}-summary.md && git commit -m 'Monthly summary: {{ now().subtract(1, 'month').format('MMMM YYYY') }}'"
+      },
+      "id": "git-commit-monthly",
+      "name": "Git Commit: Monthly Summary",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1500, 300]
+    }
+  ],
+  "connections": {
+    "Cron: 1st of Month 08:00": {
+      "main": [
+        [
+          {
+            "node": "List Daily Files (Previous Month)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Daily Files (Previous Month)": {
+      "main": [
+        [
+          {
+            "node": "Read Daily Brief Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Daily Brief Files": {
+      "main": [
+        [
+          {
+            "node": "Claude: Synthesize Monthly Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude: Synthesize Monthly Summary": {
+      "main": [
+        [
+          {
+            "node": "Write to Vault: Monthly Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write to Vault: Monthly Summary": {
+      "main": [
+        [
+          {
+            "node": "Git Commit: Monthly Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "id": null,
+  "pinData": {},
+  "versionId": null
+}
