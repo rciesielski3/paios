@@ -1,0 +1,100 @@
+{
+  "name": "PAIOS Daily Brief",
+  "description": "Daily GitHub activity synthesis by Claude, delivered via Telegram",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger-node",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "owner": "={{ $processEnv.GITHUB_OWNER }}",
+        "operation": "getRepositories",
+        "resource": "repository"
+      },
+      "id": "github-get-repos",
+      "name": "GitHub: Get Your Repos",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [500, 300],
+      "credentials": {
+        "githubApi": "={{ $secrets.github_credentials }}"
+      }
+    },
+    {
+      "parameters": {
+        "operation": "askAi",
+        "text": "Based on the GitHub activity below, create a Daily Brief following the exact format in system/prompts/daily-brief.md. User's interest profile: see system/interest-profile.md.\n\nGitHub Activity:\n{{ JSON.stringify($('GitHub: Get Your Repos').all()) }}\n\nFormat: exactly as specified. Total: <25 lines, <300 tokens.",
+        "model": "claude-3-5-sonnet-20241022",
+        "responseFormat": "text"
+      },
+      "id": "claude-synthesize",
+      "name": "Claude: Synthesize Brief",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [750, 300],
+      "credentials": {
+        "openAiApi": "={{ $secrets.claude_credentials }}"
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "botToken",
+        "botToken": "={{ $processEnv.TELEGRAM_BOT_TOKEN }}",
+        "chatId": "={{ $processEnv.TELEGRAM_CHAT_ID }}",
+        "text": "={{ $('Claude: Synthesize Brief').text }}",
+        "parseMode": "Markdown"
+      },
+      "id": "telegram-send",
+      "name": "Send Telegram: Brief",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1000, 300]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "GitHub: Get Your Repos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub: Get Your Repos": {
+      "main": [
+        [
+          {
+            "node": "Claude: Synthesize Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude: Synthesize Brief": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram: Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "id": null,
+  "pinData": {},
+  "versionId": null
+}
