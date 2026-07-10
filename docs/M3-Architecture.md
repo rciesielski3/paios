@@ -107,13 +107,21 @@ Every source must be converted to this format:
 **Purpose:** New releases from watched repositories.
 
 **Input:**
-- Watched repositories list (e.g., Playwright, n8n, Flutter, Appium)
+- Configuration: `system/config/watched-repositories.yaml` (loaded at runtime)
+- Priority 1 repos: Playwright, n8n, WebdriverIO, Appium, TypeScript
+- Priority 2 repos: React Native, Expo, Flutter
 
 **Processing:**
 - Fetch releases from last 24h (or last poll)
-- Filter: Major + Minor versions (ignore patches)
-- Check: Any breaking changes?
+- Filter: Major + Minor versions (ignore patches unless security/critical)
+- Check: Any breaking changes or migration guides?
 - Assess priority (high if breaking, medium otherwise)
+
+**Configuration Changes:**
+- Edit `system/config/watched-repositories.yaml` in vault
+- Commit to git
+- Next workflow run automatically uses updated list
+- **No workflow refactoring needed**
 
 **Output:**
 ```json
@@ -165,12 +173,22 @@ Every source must be converted to this format:
 
 **Input:**
 - Hacker News top stories
+- Configuration: `system/config/hacker-news-filter.yaml` (loaded at runtime)
+- Filter keywords: QA, testing, automation, AI, DevOps, architecture, etc.
 
 **Processing:**
 - Fetch top 100 stories
-- Filter keywords: QA, testing, automation, AI, DevOps, architecture, engineering, CI/CD
+- Filter by keywords from config
 - Score by relevance (high/medium/low)
 - Extract top comments (not just headline)
+- Ignore startup/business/news unless directly engineering-relevant
+
+**Configuration Changes:**
+- Edit `system/config/hacker-news-filter.yaml` in vault
+- Add/remove keywords as needed
+- Commit to git
+- Next workflow run automatically uses updated keywords
+- **No workflow refactoring needed**
 
 **Output:**
 ```json
@@ -295,15 +313,38 @@ Cron (08:05 Mon-Fri)
 
 ---
 
+## Configuration as Code
+
+All configurable aspects live in `system/config/` (in vault, git-backed).
+
+**Pattern:**
+1. Create YAML/JSON config file
+2. n8n workflow loads config at runtime
+3. Update config → no workflow changes needed
+4. All changes auditable in git
+
+**Current configs:**
+- `watched-repositories.yaml` — GitHub Releases to monitor
+- `hacker-news-filter.yaml` — HN keyword filter
+
+**Future configs:**
+- `subreddits.yaml` — Reddit subs (when approved)
+- `google-calendar-config.yaml` — Calendar rules
+- `notification-rules.yaml` — Alert thresholds
+
+---
+
 ## Adding a New Source
 
 To add Reddit (or any future source):
 
-1. **Create module:** Fetch Reddit posts, normalize to format
-2. **Add to parallel step:** Include in `[Parallel] Run all modules`
-3. **Update dedup:** Add Reddit source_id format
-4. **Update Claude prompt:** Mention Reddit as potential source
+1. **Create config file:** `system/config/subreddits.yaml` (in vault)
+2. **Create module:** Fetch Reddit posts, normalize to format
+3. **Add to parallel step:** Include in `[Parallel] Run all modules`
+4. **Update dedup:** Add Reddit source_id format
 5. **No architecture changes required**
+
+Users can update `subreddits.yaml` without touching the workflow.
 
 ---
 
