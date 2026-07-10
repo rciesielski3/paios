@@ -1,0 +1,14 @@
+.env
+.env.local
+node_modules/
+*.log
+.DS_Store
+data/postgres/*
+data/n8n/*
+!data/postgres/.gitkeep
+!data/n8n/.gitkeep
+backups/*.tar.gz
+.idea/
+.vscode/
+*.swp
+*.swo
