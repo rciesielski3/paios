@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
-      - ./data/postgres:/var/lib/postgresql/data
+      - ./data/postgres/pgdata:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
@@ -34,7 +34,7 @@ services:
       N8N_PORT: 3333
       N8N_PROTOCOL: http
     volumes:
-      - ./data/n8n:/home/node/.n8n
+      - ./data/n8n/config:/home/node/.n8n
     ports:
       - "3333:3333"
     depends_on:
