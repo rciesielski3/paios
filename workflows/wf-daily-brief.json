@@ -12,7 +12,7 @@
         "messages": {
           "values": [
             {
-              "content": "=You are my technical Chief of Staff.\n\nAnalyze the following repositories together.\n\nReturn ONE markdown Daily Brief.\n\nFocus only on projects worth my attention.\n\nIgnore insignificant changes.\n\nFormat:\n\n# Daily Brief\n\n## Projects worth attention\n\n- ...\n\n## Recommendations\n\n- ...\n\nRepositories:\n\n{{ JSON.stringify($json.repositories, null, 2) }}"
+              "content": "=You are my technical Chief of Staff.\n\nAnalyze the following normalized items together.\n\nReturn ONE markdown Daily Brief.\n\nFocus only on projects worth my attention.\n\nIgnore insignificant changes.\n\nFormat:\n\n# Daily Brief\n\n## Projects worth attention\n\n- ...\n\n## Recommendations\n\n- ...\n\nNormalized Items:\n\n{{ JSON.stringify($input.all(), null, 2) }}"
             }
           ]
         },
@@ -35,7 +35,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all()[0].json.repositories || [];\nconst workflowRunId = $execution.id;\n\nconst insertStatements = items.map(item => ({\n  source: 'github',\n  source_id: item.url || item.name,\n  title: item.name,\n  url: item.url,\n  content: item.description || '',\n  priority: 'medium',\n  tags: JSON.stringify(item.language ? [item.language] : []),\n  workflow_run_id: workflowRunId\n}));\n\nreturn insertStatements;"
+        "jsCode": "const items = $input.all()[0].json || [];\nconst workflowRunId = $execution.id;\n\nreturn items.map(item => ({\n  source: item.source,\n  source_id: item.source_id,\n  title: item.title,\n  url: item.url,\n  content: item.content,\n  priority: item.priority,\n  tags: JSON.stringify(item.tags),\n  workflow_run_id: workflowRunId\n}));"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -106,7 +106,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const brief = $input.all()[0].json.content[1].text;\nconst itemsCount = $input.all()[1].json.repositories ? $input.all()[1].json.repositories.length : 0;\nconst today = new Date().toISOString().split('T')[0];\n\nreturn [{\n  json: {\n    date: today,\n    markdown_content: brief,\n    source_items_count: itemsCount\n  }\n}];"
+        "jsCode": "const brief = $input.all()[0].json.brief || '';\nconst itemsCount = $input.all()[1].json ? $input.all()[1].json.length : 0;\nconst today = new Date().toISOString().split('T')[0];\n\nreturn [{\n  json: {\n    date: today,\n    markdown_content: brief,\n    source_items_count: itemsCount\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -260,6 +260,19 @@
     },
     {
       "parameters": {
+        "jsCode": "const repos = $input.all()[0].json.repositories || [];\n\nconst normalizedItems = repos.map(repo => ({\n  source: 'github',\n  source_id: repo.url,\n  title: repo.name,\n  url: repo.url,\n  content: repo.description || '',\n  priority: 'medium',\n  tags: repo.language ? [repo.language] : []\n}));\n\nreturn [{\n  json: normalizedItems\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        0
+      ],
+      "id": "dedup-001",
+      "name": "Dedup"
+    },
+    {
+      "parameters": {
         "jsCode": "return [{\n\n  json: {\n\n    text: $json.content[1].text\n\n      .replace(/\\*\\*/g, \"\")\n\n      .replace(/^#/gm, \"\")\n\n      .replace(/`/g, \"\")\n\n  }\n\n}];"
       },
       "type": "n8n-nodes-base.code",
@@ -349,6 +362,17 @@
       ]
     },
     "Select Top 5 Repositories": {
+      "main": [
+        [
+          {
+            "node": "Dedup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dedup": {
       "main": [
         [
           {
