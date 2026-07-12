@@ -8,6 +8,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - ./data/postgres/pgdata:/var/lib/postgresql/data
+      - ./data/migrations:/vault/migrations
     ports:
       - "5432:5432"
     healthcheck:
@@ -33,6 +34,7 @@ services:
       N8N_HOST: localhost
       N8N_PORT: 3333
       N8N_PROTOCOL: http
+      N8N_RESTRICT_FILE_ACCESS_TO: /vault;/home/node/.n8n-files
     volumes:
       - ./data/n8n/config:/home/node/.n8n
       - ../paios-vault:/vault
