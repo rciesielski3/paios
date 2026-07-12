@@ -16,9 +16,9 @@ CREATE TABLE IF NOT EXISTS normalized_items (
   workflow_run_id UUID
 );
 
-CREATE INDEX idx_normalized_items_source ON normalized_items(source);
-CREATE INDEX idx_normalized_items_source_id ON normalized_items(source_id);
-CREATE INDEX idx_normalized_items_created_at ON normalized_items(created_at);
+CREATE INDEX IF NOT EXISTS idx_normalized_items_source ON normalized_items(source);
+CREATE INDEX IF NOT EXISTS idx_normalized_items_source_id ON normalized_items(source_id);
+CREATE INDEX IF NOT EXISTS idx_normalized_items_created_at ON normalized_items(created_at);
 
 -- Table: synthesized_briefs
 -- Claude-synthesized daily insights
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS synthesized_briefs (
   generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_synthesized_briefs_date ON synthesized_briefs(date);
+CREATE INDEX IF NOT EXISTS idx_synthesized_briefs_date ON synthesized_briefs(date);
 
 -- Table: dedup_state
 -- 7-day deduplication tracking
@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS dedup_state (
   workflow_run_id UUID
 );
 
-CREATE INDEX idx_dedup_state_last_seen ON dedup_state(last_seen);
+CREATE INDEX IF NOT EXISTS idx_dedup_state_last_seen ON dedup_state(last_seen);
 
 -- Permissions
 DO $$ BEGIN
