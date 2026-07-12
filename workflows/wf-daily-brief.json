@@ -347,6 +347,70 @@
       ],
       "id": "8d0a6fc5-7be5-4167-80ce-bf48d17dcfc1",
       "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "fileName": "/vault/system/config/watched-repositories.yaml",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        192,
+        400
+      ],
+      "id": "load-watched-repos-yaml-001",
+      "name": "Load Watched Repos YAML"
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $input.all()[0].json.body || '';\n\ntry {\n  // Simple YAML parser for our use case\n  const lines = content.split('\\n');\n  const repos = [];\n  let inPriority1 = false;\n  \n  for (const line of lines) {\n    const trimmed = line.trim();\n    \n    // Check if we're entering the priority_1 section\n    if (trimmed === 'priority_1:') {\n      inPriority1 = true;\n      continue;\n    }\n    \n    // Check if we're entering a new top-level key\n    if (inPriority1 && trimmed && !trimmed.startsWith('-') && trimmed.includes(':')) {\n      inPriority1 = false;\n    }\n    \n    // Extract repos from priority_1 section\n    if (inPriority1 && trimmed.startsWith('- ')) {\n      const repo = trimmed.substring(2).trim();\n      if (repo) {\n        repos.push(repo);\n      }\n    }\n  }\n  \n  // Return each repo as a separate item for the loop\n  return repos.map((repo) => {\n    const [owner, name] = repo.split('/');\n    return {\n      json: {\n        owner,\n        repo: name,\n        full_repo: repo\n      }\n    };\n  });\n} catch (error) {\n  return [{\n    json: {\n      error: 'Failed to parse YAML: ' + error.message\n    }\n  }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        400
+      ],
+      "id": "parse-watched-repos-001",
+      "name": "Parse Watched Repos"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.github.com/repos/{{ $json.owner }}/{{ $json.repo }}/releases/latest",
+        "method": "GET",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        600,
+        400
+      ],
+      "id": "fetch-github-releases-001",
+      "name": "Fetch Latest Releases",
+      "credentials": {
+        "githubApi": {
+          "id": "JcrlJS02mAQjQ6QD",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  const release = item.json;\n  return {\n    json: {\n      source: \"github_releases\",\n      source_id: `github_release_${release.name}_${release.tag_name}`,\n      title: `${release.name} released`,\n      url: release.html_url,\n      content: release.body ? release.body.substring(0, 500) : \"No release notes\",\n      priority: \"high\",\n      tags: [\"release\", release.name.toLowerCase()]\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        750,
+        400
+      ],
+      "id": "normalize-github-releases-001",
+      "name": "Normalize GitHub Releases"
     }
   ],
   "pinData": {},
@@ -493,6 +557,55 @@
             "node": "QA News: Dev.to",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Load Watched Repos YAML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Watched Repos YAML": {
+      "main": [
+        [
+          {
+            "node": "Parse Watched Repos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Watched Repos": {
+      "main": [
+        [
+          {
+            "node": "Fetch Latest Releases",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Latest Releases": {
+      "main": [
+        [
+          {
+            "node": "Normalize GitHub Releases",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize GitHub Releases": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
           }
         ]
       ]
