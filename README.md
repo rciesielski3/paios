@@ -117,14 +117,13 @@ Edit workflow files in `workflows/` directory or use the n8n UI to customize fil
 
 ## Documentation
 
-Comprehensive guides are available in the `docs/` directory:
+See [paios-docs](https://github.com/your-github-username/paios-docs) for complete guides:
 
-- [M1 Telegram Setup](docs/M1-Telegram-Setup.md) — Configure Telegram bot integration
-- [M2 Daily Brief](docs/M2-Daily-Brief-Setup.md) — Set up daily synthesis workflows
-- [M3 Tech Radar](docs/M3-Tech-Radar.md) — Monitor and rank tech trends
-- [M4 Knowledge Layer](docs/M4-Knowledge-Layer.md) — Configure custom prompts and vault
-- [Architecture Overview](docs/M3-Architecture.md) — Deep dive into system design
-- [Troubleshooting](docs/) — Common issues and solutions
+- **[QUICKSTART](https://github.com/your-github-username/paios-docs/blob/main/QUICKSTART.md)** — 5-minute setup
+- **[ARCHITECTURE](https://github.com/your-github-username/paios-docs/blob/main/ARCHITECTURE.md)** — System design
+- **[CONFIGURATION](https://github.com/your-github-username/paios-docs/blob/main/CONFIGURATION.md)** — Vault setup
+- **[TROUBLESHOOTING](https://github.com/your-github-username/paios-docs/blob/main/TROUBLESHOOTING.md)** — FAQ & fixes
+- **[CONTRIBUTING](https://github.com/your-github-username/paios-docs/blob/main/CONTRIBUTING.md)** — Extend PAIOS
 
 ## System Requirements
 
