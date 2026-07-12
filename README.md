@@ -168,7 +168,7 @@ Contributions are welcome! Please:
 2. Create a feature branch (`git checkout -b feature/my-feature`)
 3. Submit a pull request with a clear description
 
-See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for detailed guidelines.
+See [CONTRIBUTING.md](https://github.com/rciesielski3/paios-docs/blob/main/CONTRIBUTING.md) for detailed guidelines.
 
 ## License
 
