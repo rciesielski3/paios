@@ -3,6 +3,50 @@
   "nodes": [
     {
       "parameters": {
+        "url": "https://dev.to/api/articles?tag=qa&top=7",
+        "method": "GET",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        192,
+        150
+      ],
+      "id": "qa-news-http-001",
+      "name": "QA News: Dev.to"
+    },
+    {
+      "parameters": {
+        "jsCode": "const articles = $input.all()[0].json;\n\nreturn articles\n  .filter(article => article.title && article.url)\n  .map(article => ({\n    source: \"qa_news\",\n    source_id: `qa_news_devto_${article.id}`,\n    title: article.title,\n    url: article.url,\n    content: article.description || \"\",\n    priority: \"medium\",\n    tags: [\"qa\", \"testing\", ...(article.tag_list || [])]\n  }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        150
+      ],
+      "id": "qa-news-normalize-001",
+      "name": "Normalize QA News"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByFields": [],
+        "combineMode": "multiplex",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        550,
+        50
+      ],
+      "id": "merge-adapters-001",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
         "modelId": {
           "__rl": true,
           "value": "claude-sonnet-5",
@@ -307,6 +351,60 @@
   ],
   "pinData": {},
   "connections": {
+    "QA News: Dev.to": {
+      "main": [
+        [
+          {
+            "node": "Normalize QA News",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize QA News": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Dedup": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Generate Daily Brief (Claude)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Persist Normalized Items",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Persist Synthesized Brief",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
     "Generate Daily Brief (Claude)": {
       "main": [
         [
@@ -372,27 +470,6 @@
         ]
       ]
     },
-    "Dedup": {
-      "main": [
-        [
-          {
-            "node": "Generate Daily Brief (Claude)",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Persist Normalized Items",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Persist Synthesized Brief",
-            "type": "main",
-            "index": 1
-          }
-        ]
-      ]
-    },
     "Prepare Telegram Message": {
       "main": [
         [
@@ -409,6 +486,11 @@
         [
           {
             "node": "Get GitHub Repositories",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "QA News: Dev.to",
             "type": "main",
             "index": 0
           }
