@@ -35,6 +35,127 @@
     },
     {
       "parameters": {
+        "jsCode": "const items = $input.all()[0].json.repositories || [];\nconst workflowRunId = $execution.id;\n\nconst insertStatements = items.map(item => ({\n  source: 'github',\n  source_id: item.url || item.name,\n  title: item.name,\n  url: item.url,\n  content: item.description || '',\n  priority: 'medium',\n  tags: JSON.stringify(item.language ? [item.language] : []),\n  workflow_run_id: workflowRunId\n}));\n\nreturn insertStatements;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        200
+      ],
+      "id": "persist-normalized-items-001",
+      "name": "Persist Normalized Items"
+    },
+    {
+      "parameters": {
+        "mode": "each",
+        "resource": "query",
+        "operation": "execute",
+        "query": "INSERT INTO normalized_items (source, source_id, title, url, content, priority, tags, workflow_run_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT (source_id) DO NOTHING;",
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "$1",
+              "value": "={{ $json.source }}"
+            },
+            {
+              "name": "$2",
+              "value": "={{ $json.source_id }}"
+            },
+            {
+              "name": "$3",
+              "value": "={{ $json.title }}"
+            },
+            {
+              "name": "$4",
+              "value": "={{ $json.url }}"
+            },
+            {
+              "name": "$5",
+              "value": "={{ $json.content }}"
+            },
+            {
+              "name": "$6",
+              "value": "={{ $json.priority }}"
+            },
+            {
+              "name": "$7",
+              "value": "={{ $json.tags }}"
+            },
+            {
+              "name": "$8",
+              "value": "={{ $json.workflow_run_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [
+        1000,
+        200
+      ],
+      "id": "insert-normalized-items-001",
+      "name": "Insert to normalized_items",
+      "credentials": {
+        "postgres": {
+          "id": "HHToxlsndTvWHnD3",
+          "name": "paios-postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const brief = $input.all()[0].json.content[1].text;\nconst itemsCount = $input.all()[1].json.repositories ? $input.all()[1].json.repositories.length : 0;\nconst today = new Date().toISOString().split('T')[0];\n\nreturn [{\n  json: {\n    date: today,\n    markdown_content: brief,\n    source_items_count: itemsCount\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        350
+      ],
+      "id": "persist-synthesized-brief-001",
+      "name": "Persist Synthesized Brief"
+    },
+    {
+      "parameters": {
+        "resource": "query",
+        "operation": "execute",
+        "query": "INSERT INTO synthesized_briefs (date, markdown_content, source_items_count) VALUES ($1, $2, $3) ON CONFLICT (date) DO UPDATE SET markdown_content = EXCLUDED.markdown_content, source_items_count = EXCLUDED.source_items_count, generated_at = CURRENT_TIMESTAMP;",
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "$1",
+              "value": "={{ $json.date }}"
+            },
+            {
+              "name": "$2",
+              "value": "={{ $json.markdown_content }}"
+            },
+            {
+              "name": "$3",
+              "value": "={{ $json.source_items_count }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [
+        1000,
+        350
+      ],
+      "id": "insert-synthesized-briefs-001",
+      "name": "Insert to synthesized_briefs",
+      "credentials": {
+        "postgres": {
+          "id": "HHToxlsndTvWHnD3",
+          "name": "paios-postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
         "chatId": "=8920148969",
         "text": "={{$json.text}}",
         "additionalFields": {}
@@ -185,6 +306,11 @@
             "node": "Prepare Telegram Message",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Persist Synthesized Brief",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -229,6 +355,16 @@
             "node": "Generate Daily Brief (Claude)",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Persist Normalized Items",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Persist Synthesized Brief",
+            "type": "main",
+            "index": 1
           }
         ]
       ]
@@ -253,6 +389,38 @@
             "index": 0
           }
         ]
+      ]
+    },
+    "Persist Normalized Items": {
+      "main": [
+        [
+          {
+            "node": "Insert to normalized_items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert to normalized_items": {
+      "main": [
+        []
+      ]
+    },
+    "Persist Synthesized Brief": {
+      "main": [
+        [
+          {
+            "node": "Insert to synthesized_briefs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert to synthesized_briefs": {
+      "main": [
+        []
       ]
     }
   },
