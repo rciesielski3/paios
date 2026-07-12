@@ -411,6 +411,132 @@
       ],
       "id": "normalize-github-releases-001",
       "name": "Normalize GitHub Releases"
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "fileName": "/vault/system/config/hacker-news-filter.yaml",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        192,
+        550
+      ],
+      "id": "load-hn-filter-yaml-001",
+      "name": "Load HN Filter YAML"
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $input.all()[0].json.body || '';\n\ntry {\n  const lines = content.split('\\n');\n  const keywords = [];\n  let inKeywords = false;\n  \n  for (const line of lines) {\n    const trimmed = line.trim();\n    \n    if (trimmed === 'keywords:') {\n      inKeywords = true;\n      continue;\n    }\n    \n    if (inKeywords && trimmed && !trimmed.startsWith('-') && trimmed.includes(':')) {\n      inKeywords = false;\n    }\n    \n    if (inKeywords && trimmed.startsWith('- ')) {\n      const keyword = trimmed.substring(2).trim();\n      if (keyword) {\n        keywords.push(keyword);\n      }\n    }\n  }\n  \n  return [{\n    json: {\n      keywords: keywords\n    }\n  }];\n} catch (error) {\n  return [{\n    json: {\n      error: 'Failed to parse YAML: ' + error.message,\n      keywords: []\n    }\n  }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        550
+      ],
+      "id": "parse-hn-keywords-001",
+      "name": "Parse HN Keywords"
+    },
+    {
+      "parameters": {
+        "url": "https://hacker-news.firebaseio.com/v0/topstories.json?print=pretty",
+        "method": "GET",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        550,
+        550
+      ],
+      "id": "fetch-hn-top-stories-001",
+      "name": "Fetch HN Top Stories"
+    },
+    {
+      "parameters": {
+        "jsCode": "const storyIds = $input.all()[0].json || [];\nreturn storyIds.slice(0, 100).map((id, idx) => ({\n  json: {\n    id: id,\n    index: idx\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        550
+      ],
+      "id": "prepare-hn-story-ids-001",
+      "name": "Prepare HN Story IDs"
+    },
+    {
+      "parameters": {
+        "url": "=https://hacker-news.firebaseio.com/v0/item/{{ $json.id }}.json",
+        "method": "GET",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        850,
+        550
+      ],
+      "id": "fetch-hn-story-details-001",
+      "name": "Fetch HN Story Details"
+    },
+    {
+      "parameters": {
+        "jsCode": "const keywordsNode = $input.all().find(item => item.json.keywords);\nconst keywords = keywordsNode ? keywordsNode.json.keywords : [];\n\nreturn items.map(item => ({\n  ...item,\n  json: {\n    ...item.json,\n    keywords: keywords\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        500
+      ],
+      "id": "attach-hn-keywords-001",
+      "name": "Attach HN Keywords to Stories"
+    },
+    {
+      "parameters": {
+        "jsCode": "const keywords = $json.keywords || [];\nconst keywordLower = keywords.map(k => k.toLowerCase());\n\nreturn items.filter(item => {\n  const story = item.json;\n  if (!story || story.type !== 'story') {\n    return false;\n  }\n  const text = ((story.title || '') + ' ' + (story.url || '')).toLowerCase();\n  return keywordLower.some(keyword => text.includes(keyword));\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        600
+      ],
+      "id": "filter-hn-by-keywords-001",
+      "name": "Filter HN by Keywords"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map((item, idx) => {\n  const story = item.json;\n  return {\n    json: {\n      source: 'hacker_news',\n      source_id: `hacker_news_${story.id}`,\n      title: story.title,\n      url: story.url || `https://news.ycombinator.com/item?id=${story.id}`,\n      content: `Score: ${story.score}. ${story.title}`,\n      priority: 'medium',\n      tags: ['hacker_news', 'tech']\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1150,
+        550
+      ],
+      "id": "normalize-hn-stories-001",
+      "name": "Normalize HN Stories"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByFields": [],
+        "combineMode": "multiplex",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        900,
+        600
+      ],
+      "id": "merge-hn-keywords-stories-001",
+      "name": "Merge HN Keywords with Stories"
     }
   ],
   "pinData": {},
@@ -562,6 +688,16 @@
             "node": "Load Watched Repos YAML",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Load HN Filter YAML",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch HN Top Stories",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -606,6 +742,105 @@
             "node": "Merge",
             "type": "main",
             "index": 2
+          }
+        ]
+      ]
+    },
+    "Load HN Filter YAML": {
+      "main": [
+        [
+          {
+            "node": "Parse HN Keywords",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse HN Keywords": {
+      "main": [
+        [
+          {
+            "node": "Merge HN Keywords with Stories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch HN Top Stories": {
+      "main": [
+        [
+          {
+            "node": "Prepare HN Story IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare HN Story IDs": {
+      "main": [
+        [
+          {
+            "node": "Fetch HN Story Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch HN Story Details": {
+      "main": [
+        [
+          {
+            "node": "Merge HN Keywords with Stories",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge HN Keywords with Stories": {
+      "main": [
+        [
+          {
+            "node": "Attach HN Keywords to Stories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach HN Keywords to Stories": {
+      "main": [
+        [
+          {
+            "node": "Filter HN by Keywords",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter HN by Keywords": {
+      "main": [
+        [
+          {
+            "node": "Normalize HN Stories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize HN Stories": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 3
           }
         ]
       ]
