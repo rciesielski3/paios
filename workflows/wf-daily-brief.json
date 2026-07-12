@@ -401,7 +401,7 @@
     },
     {
       "parameters": {
-        "jsCode": "return items.map(item => {\n  const release = item.json;\n  return {\n    json: {\n      source: \"github_releases\",\n      source_id: `github_release_${release.name}_${release.tag_name}`,\n      title: `${release.name} released`,\n      url: release.html_url,\n      content: release.body ? release.body.substring(0, 500) : \"No release notes\",\n      priority: \"high\",\n      tags: [\"release\", release.name.toLowerCase()]\n    }\n  };\n});"
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const release = item.json;\n  return {\n    json: {\n      source: \"github_releases\",\n      source_id: `github_release_${release.name}_${release.tag_name}`,\n      title: `${release.name} released`,\n      url: release.html_url,\n      content: release.body ? release.body.substring(0, 500) : \"No release notes\",\n      priority: \"high\",\n      tags: [\"release\", release.name.toLowerCase()]\n    }\n  };\n});"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -485,7 +485,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const keywordsNode = $input.all().find(item => item.json.keywords);\nconst keywords = keywordsNode ? keywordsNode.json.keywords : [];\n\nreturn items.map(item => ({\n  ...item,\n  json: {\n    ...item.json,\n    keywords: keywords\n  }\n}));"
+        "jsCode": "const items = $input.all();\nconst keywordsNode = items.find(item => item.json.keywords);\nconst keywords = keywordsNode ? keywordsNode.json.keywords : [];\n\nreturn items.map(item => ({\n  ...item,\n  json: {\n    ...item.json,\n    keywords: keywords\n  }\n}));"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -498,7 +498,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const keywords = $json.keywords || [];\nconst keywordLower = keywords.map(k => k.toLowerCase());\n\nreturn items.filter(item => {\n  const story = item.json;\n  if (!story || story.type !== 'story') {\n    return false;\n  }\n  const text = ((story.title || '') + ' ' + (story.url || '')).toLowerCase();\n  return keywordLower.some(keyword => text.includes(keyword));\n});"
+        "jsCode": "const items = $input.all();\nconst keywords = $json.keywords || [];\nconst keywordLower = keywords.map(k => k.toLowerCase());\n\nreturn items.filter(item => {\n  const story = item.json;\n  if (!story || story.type !== 'story') {\n    return false;\n  }\n  const text = ((story.title || '') + ' ' + (story.url || '')).toLowerCase();\n  return keywordLower.some(keyword => text.includes(keyword));\n});"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -511,7 +511,7 @@
     },
     {
       "parameters": {
-        "jsCode": "return items.map((item, idx) => {\n  const story = item.json;\n  return {\n    json: {\n      source: 'hacker_news',\n      source_id: `hacker_news_${story.id}`,\n      title: story.title,\n      url: story.url || `https://news.ycombinator.com/item?id=${story.id}`,\n      content: `Score: ${story.score}. ${story.title}`,\n      priority: 'medium',\n      tags: ['hacker_news', 'tech']\n    }\n  };\n});"
+        "jsCode": "const items = $input.all();\n\nreturn items.map((item, idx) => {\n  const story = item.json;\n  return {\n    json: {\n      source: 'hacker_news',\n      source_id: `hacker_news_${story.id}`,\n      title: story.title,\n      url: story.url || `https://news.ycombinator.com/item?id=${story.id}`,\n      content: `Score: ${story.score}. ${story.title}`,\n      priority: 'medium',\n      tags: ['hacker_news', 'tech']\n    }\n  };\n});"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
