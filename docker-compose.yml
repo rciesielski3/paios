@@ -33,10 +33,11 @@ services:
       N8N_HOST: localhost
       N8N_PORT: 3333
       N8N_PROTOCOL: http
-      N8N_RESTRICT_FILE_ACCESS_TO: /home/node/.n8n-files
+      N8N_RESTRICT_FILE_ACCESS_TO: /vault;/data;/home/node/.n8n-files
     volumes:
       - ./data/n8n/config:/home/node/.n8n
       - ../paios-vault:/vault
+      - ./data/dedup.json:/data/dedup.json
     ports:
       - "3333:3333"
     depends_on:

@@ -5,7 +5,6 @@ node_modules/
 .DS_Store
 data/postgres/*
 data/n8n/*
-data/dedup.json
 !data/postgres/.gitkeep
 !data/n8n/.gitkeep
 backups/*.tar.gz

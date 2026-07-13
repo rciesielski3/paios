@@ -33,8 +33,9 @@
       "parameters": {
         "mode": "combine",
         "mergeByFields": [],
-        "combineMode": "multiplex",
-        "options": {}
+        "numberInputs": 3,
+        "options": {},
+        "combinationMode": "multiplex"
       },
       "type": "n8n-nodes-base.merge",
       "typeVersion": 2.1,
@@ -351,7 +352,7 @@
     {
       "parameters": {
         "operation": "read",
-        "fileName": "/vault/system/config/watched-repositories.yaml",
+        "fileSelector": "/vault/system/config/watched-repositories.yaml",
         "options": {}
       },
       "type": "n8n-nodes-base.readWriteFile",
@@ -365,7 +366,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const content = $input.all()[0].json.body || '';\n\ntry {\n  // Simple YAML parser for our use case\n  const lines = content.split('\\n');\n  const repos = [];\n  let inPriority1 = false;\n  \n  for (const line of lines) {\n    const trimmed = line.trim();\n    \n    // Check if we're entering the priority_1 section\n    if (trimmed === 'priority_1:') {\n      inPriority1 = true;\n      continue;\n    }\n    \n    // Check if we're entering a new top-level key\n    if (inPriority1 && trimmed && !trimmed.startsWith('-') && trimmed.includes(':')) {\n      inPriority1 = false;\n    }\n    \n    // Extract repos from priority_1 section\n    if (inPriority1 && trimmed.startsWith('- ')) {\n      const repo = trimmed.substring(2).trim();\n      if (repo) {\n        repos.push(repo);\n      }\n    }\n  }\n  \n  // Return each repo as a separate item for the loop\n  return repos.map((repo) => {\n    const [owner, name] = repo.split('/');\n    return {\n      json: {\n        owner,\n        repo: name,\n        full_repo: repo\n      }\n    };\n  });\n} catch (error) {\n  return [{\n    json: {\n      error: 'Failed to parse YAML: ' + error.message\n    }\n  }];\n}"
+        "jsCode": "const content = $input.all()[0].json.content || '';\n\ntry {\n  // Simple YAML parser for our use case\n  const lines = content.split('\\n');\n  const repos = [];\n  let inPriority1 = false;\n  \n  for (const line of lines) {\n    const trimmed = line.trim();\n    \n    // Check if we're entering the priority_1 section\n    if (trimmed === 'priority_1:') {\n      inPriority1 = true;\n      continue;\n    }\n    \n    // Check if we're entering a new top-level key\n    if (inPriority1 && trimmed && !trimmed.startsWith('-') && trimmed.includes(':')) {\n      inPriority1 = false;\n    }\n    \n    // Extract repos from priority_1 section\n    if (inPriority1 && trimmed.startsWith('- ')) {\n      const repo = trimmed.substring(2).trim();\n      if (repo) {\n        repos.push(repo);\n      }\n    }\n  }\n  \n  // Return each repo as a separate item for the loop\n  return repos.map((repo) => {\n    const [owner, name] = repo.split('/');\n    return {\n      json: {\n        owner,\n        repo: name,\n        full_repo: repo\n      }\n    };\n  });\n} catch (error) {\n  return [{\n    json: {\n      error: 'Failed to parse YAML: ' + error.message\n    }\n  }];\n}"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -415,7 +416,7 @@
     {
       "parameters": {
         "operation": "read",
-        "fileName": "/vault/system/config/hacker-news-filter.yaml",
+        "fileSelector": "/vault/system/config/hacker-news-filter.yaml",
         "options": {}
       },
       "type": "n8n-nodes-base.readWriteFile",
@@ -429,7 +430,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const content = $input.all()[0].json.body || '';\n\ntry {\n  const lines = content.split('\\n');\n  const keywords = [];\n  let inKeywords = false;\n  \n  for (const line of lines) {\n    const trimmed = line.trim();\n    \n    if (trimmed === 'keywords:') {\n      inKeywords = true;\n      continue;\n    }\n    \n    if (inKeywords && trimmed && !trimmed.startsWith('-') && trimmed.includes(':')) {\n      inKeywords = false;\n    }\n    \n    if (inKeywords && trimmed.startsWith('- ')) {\n      const keyword = trimmed.substring(2).trim();\n      if (keyword) {\n        keywords.push(keyword);\n      }\n    }\n  }\n  \n  return [{\n    json: {\n      keywords: keywords\n    }\n  }];\n} catch (error) {\n  return [{\n    json: {\n      error: 'Failed to parse YAML: ' + error.message,\n      keywords: []\n    }\n  }];\n}"
+        "jsCode": "const content = $input.all()[0].json.content || '';\n\ntry {\n  const lines = content.split('\\n');\n  const keywords = [];\n  let inKeywords = false;\n  \n  for (const line of lines) {\n    const trimmed = line.trim();\n    \n    if (trimmed === 'keywords:') {\n      inKeywords = true;\n      continue;\n    }\n    \n    if (inKeywords && trimmed && !trimmed.startsWith('-') && trimmed.includes(':')) {\n      inKeywords = false;\n    }\n    \n    if (inKeywords && trimmed.startsWith('- ')) {\n      const keyword = trimmed.substring(2).trim();\n      if (keyword) {\n        keywords.push(keyword);\n      }\n    }\n  }\n  \n  return [{\n    json: {\n      keywords: keywords\n    }\n  }];\n} catch (error) {\n  return [{\n    json: {\n      error: 'Failed to parse YAML: ' + error.message,\n      keywords: []\n    }\n  }];\n}"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -457,7 +458,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const storyIds = $input.all()[0].json || [];\nreturn storyIds.slice(0, 100).map((id, idx) => ({\n  json: {\n    id: id,\n    index: idx\n  }\n}));"
+        "jsCode": "// The HTTP Request node returns one item per array element when the response\n// body is a top-level JSON array, so collect all items back into a single array\n// of story IDs before slicing (rather than assuming $input.all()[0].json is the array).\nconst allItems = $input.all();\nconst storyIds = (allItems.length === 1 && Array.isArray(allItems[0].json))\n  ? allItems[0].json\n  : allItems.map(item => item.json);\n\nreturn storyIds.slice(0, 100).map((id, idx) => ({\n  json: {\n    id: id,\n    index: idx\n  }\n}));"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -526,8 +527,8 @@
       "parameters": {
         "mode": "combine",
         "mergeByFields": [],
-        "combineMode": "multiplex",
-        "options": {}
+        "options": {},
+        "combinationMode": "multiplex"
       },
       "type": "n8n-nodes-base.merge",
       "typeVersion": 2.1,
@@ -537,6 +538,125 @@
       ],
       "id": "merge-hn-keywords-stories-001",
       "name": "Merge HN Keywords with Stories"
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "/data/dedup.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        192,
+        750
+      ],
+      "id": "load-dedup-state-001",
+      "name": "Load Dedup State",
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        1300,
+        475
+      ],
+      "id": "merge-releases-hn-001",
+      "name": "Merge Releases and HN"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst dedupState = (items[0] && items[0].json.dedup) || {};\nconst sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();\n\n// Remove entries older than 7 days\nObject.keys(dedupState).forEach(key => {\n  if (dedupState[key] < sevenDaysAgo) {\n    delete dedupState[key];\n  }\n});\n\n// Filter items not already seen in the last 7 days\nconst filtered = items.filter(item => {\n  return !(item.json.source_id in dedupState);\n});\n\n// Strip the internal dedup-state bookkeeping field before passing items on\nreturn filtered.map(item => {\n  const { dedup, ...rest } = item.json;\n  return { json: rest };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        475
+      ],
+      "id": "filter-duplicates-7day-001",
+      "name": "Filter Duplicates (7-day dedup)"
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "binaryPropertyName": "data",
+        "destinationKey": "content",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        300,
+        400
+      ],
+      "id": "extract-watched-repos-text-001",
+      "name": "Extract Watched Repos Text"
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "binaryPropertyName": "data",
+        "destinationKey": "content",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        300,
+        550
+      ],
+      "id": "extract-hn-filter-text-001",
+      "name": "Extract HN Filter Text"
+    },
+    {
+      "parameters": {
+        "operation": "fromJson",
+        "binaryPropertyName": "data",
+        "destinationKey": "dedup",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        400,
+        750
+      ],
+      "id": "extract-dedup-json-001",
+      "name": "Extract Dedup JSON"
+    },
+    {
+      "parameters": {
+        "jsCode": "const dedup = ($input.all()[0].json.dedup) || {};\n\n// Strip legacy documentation/metadata keys - these are not real source_id entries\ndelete dedup._comment;\ndelete dedup._format;\ndelete dedup._example;\n\nreturn [{ json: { dedup } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        750
+      ],
+      "id": "parse-dedup-state-001",
+      "name": "Parse Dedup State"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "multiplex",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        1300,
+        650
+      ],
+      "id": "attach-dedup-state-001",
+      "name": "Attach Dedup State"
     }
   ],
   "pinData": {},
@@ -698,6 +818,11 @@
             "node": "Fetch HN Top Stories",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Load Dedup State",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -706,7 +831,7 @@
       "main": [
         [
           {
-            "node": "Parse Watched Repos",
+            "node": "Extract Watched Repos Text",
             "type": "main",
             "index": 0
           }
@@ -739,9 +864,9 @@
       "main": [
         [
           {
-            "node": "Merge",
+            "node": "Merge Releases and HN",
             "type": "main",
-            "index": 2
+            "index": 0
           }
         ]
       ]
@@ -750,7 +875,7 @@
       "main": [
         [
           {
-            "node": "Parse HN Keywords",
+            "node": "Extract HN Filter Text",
             "type": "main",
             "index": 0
           }
@@ -838,9 +963,42 @@
       "main": [
         [
           {
+            "node": "Merge Releases and HN",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Releases and HN": {
+      "main": [
+        [
+          {
+            "node": "Attach Dedup State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Duplicates (7-day dedup)": {
+      "main": [
+        [
+          {
             "node": "Merge",
             "type": "main",
-            "index": 3
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Load Dedup State": {
+      "main": [
+        [
+          {
+            "node": "Extract Dedup JSON",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -875,6 +1033,61 @@
     "Insert to synthesized_briefs": {
       "main": [
         []
+      ]
+    },
+    "Extract Watched Repos Text": {
+      "main": [
+        [
+          {
+            "node": "Parse Watched Repos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract HN Filter Text": {
+      "main": [
+        [
+          {
+            "node": "Parse HN Keywords",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Dedup JSON": {
+      "main": [
+        [
+          {
+            "node": "Parse Dedup State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Dedup State": {
+      "main": [
+        [
+          {
+            "node": "Attach Dedup State",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Attach Dedup State": {
+      "main": [
+        [
+          {
+            "node": "Filter Duplicates (7-day dedup)",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
