@@ -57,7 +57,7 @@
         "messages": {
           "values": [
             {
-              "content": "=You are my technical Chief of Staff.\n\nAnalyze the following normalized items together.\n\nReturn ONE markdown Daily Brief.\n\nFocus only on projects worth my attention.\n\nIgnore insignificant changes.\n\nFormat:\n\n# Daily Brief\n\n## Projects worth attention\n\n- ...\n\n## Recommendations\n\n- ...\n\nNormalized Items:\n\n{{ JSON.stringify($input.all(), null, 2) }}"
+              "content": "={{ $json.prompt }}"
             }
           ]
         },
@@ -151,7 +151,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const brief = $input.all()[0].json.brief || '';\nconst itemsCount = $input.all()[1].json ? $input.all()[1].json.length : 0;\nconst today = new Date().toISOString().split('T')[0];\n\nreturn [{\n  json: {\n    date: today,\n    markdown_content: brief,\n    source_items_count: itemsCount\n  }\n}];"
+        "jsCode": "const brief = $input.all()[0].json.brief || '';\nconst itemsCount = $input.all()[0].json.sourceCount || 0;\nconst today = new Date().toISOString().split('T')[0];\n\nreturn [{\n  json: {\n    date: today,\n    markdown_content: brief,\n    source_items_count: itemsCount\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -223,7 +223,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const brief = $json.content[1].text;\n\nreturn [{\n  json: {\n    markdown: `# ${new Date().toISOString().slice(0,10)}\n\n${brief}\n\n---\n\nGenerated automatically by PAIOS\n`\n  }\n}];"
+        "jsCode": "const brief = $json.brief || '';\n\nreturn [{\n  json: {\n    markdown: `# ${new Date().toISOString().slice(0,10)}\n\n${brief}\n\n---\n\nGenerated automatically by PAIOS\n`\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -318,7 +318,7 @@
     },
     {
       "parameters": {
-        "jsCode": "return [{\n\n  json: {\n\n    text: $json.content[1].text\n\n      .replace(/\\*\\*/g, \"\")\n\n      .replace(/^#/gm, \"\")\n\n      .replace(/`/g, \"\")\n\n  }\n\n}];"
+        "jsCode": "return [{\n\n  json: {\n\n    text: ($json.brief || \"\")\n\n      .replace(/\\*\\*/g, \"\")\n\n      .replace(/^#/gm, \"\")\n\n      .replace(/`/g, \"\")\n\n  }\n\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -657,6 +657,78 @@
       ],
       "id": "attach-dedup-state-001",
       "name": "Attach Dedup State"
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "/vault/system/prompts/tech-radar-daily.md",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        192,
+        -250
+      ],
+      "id": "load-synthesis-prompt-001",
+      "name": "Load Synthesis Prompt"
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "binaryPropertyName": "data",
+        "destinationKey": "promptText",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        400,
+        -250
+      ],
+      "id": "extract-synthesis-prompt-text-001",
+      "name": "Extract Synthesis Prompt Text"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "multiplex",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        550,
+        -150
+      ],
+      "id": "attach-synthesis-prompt-001",
+      "name": "Attach Synthesis Prompt"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst promptText = (items[0] && items[0].json.promptText) || '';\nconst today = new Date().toLocaleDateString('en-US', {\n  weekday: 'short',\n  month: 'numeric',\n  day: 'numeric'\n});\n\nconst itemsText = items\n  .map(item => `[${item.json.source}] ${item.json.title}\\nURL: ${item.json.url}\\n${item.json.content}`)\n  .join('\\n---\\n');\n\nconst fullPrompt = `${promptText}\\n\\n## Today's Items (${today})\\n\\n${itemsText}\\n\\n## Your Brief`;\n\nreturn [{\n  json: {\n    prompt: fullPrompt,\n    items: items.map(item => item.json),\n    itemCount: items.length\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        -150
+      ],
+      "id": "prepare-claude-input-001",
+      "name": "Prepare Claude Input"
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $json;\nconst textBlocks = (response.content || []).filter(block => block.type === 'text');\nconst brief = textBlocks.length > 0 ? textBlocks[textBlocks.length - 1].text : '';\nconst sourceCount = ($('Prepare Claude Input').first().json.itemCount) || 0;\n\nreturn [{\n  json: {\n    brief,\n    sourceCount\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        0
+      ],
+      "id": "extract-brief-text-001",
+      "name": "Extract Brief Text"
     }
   ],
   "pinData": {},
@@ -698,24 +770,30 @@
       "main": [
         [
           {
-            "node": "Generate Daily Brief (Claude)",
-            "type": "main",
-            "index": 0
-          },
-          {
             "node": "Persist Normalized Items",
             "type": "main",
             "index": 0
           },
           {
-            "node": "Persist Synthesized Brief",
+            "node": "Attach Synthesis Prompt",
             "type": "main",
-            "index": 1
+            "index": 0
           }
         ]
       ]
     },
     "Generate Daily Brief (Claude)": {
+      "main": [
+        [
+          {
+            "node": "Extract Brief Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Brief Text": {
       "main": [
         [
           {
@@ -732,6 +810,50 @@
             "node": "Persist Synthesized Brief",
             "type": "main",
             "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Claude Input": {
+      "main": [
+        [
+          {
+            "node": "Generate Daily Brief (Claude)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach Synthesis Prompt": {
+      "main": [
+        [
+          {
+            "node": "Prepare Claude Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Synthesis Prompt": {
+      "main": [
+        [
+          {
+            "node": "Extract Synthesis Prompt Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Synthesis Prompt Text": {
+      "main": [
+        [
+          {
+            "node": "Attach Synthesis Prompt",
+            "type": "main",
+            "index": 1
           }
         ]
       ]
@@ -801,6 +923,11 @@
           },
           {
             "node": "QA News: Dev.to",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Load Synthesis Prompt",
             "type": "main",
             "index": 0
           },
